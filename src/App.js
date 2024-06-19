@@ -13,23 +13,21 @@ import Checkbox from "./Checkbox"
 import AlertDialog from "./AlertDialog";
 
 export default function Component() {
-  const [tasks, setTasks] = useState([
-    { id: 1, title: "Terminar el informe", completed: false, dueDate: "2024-07-01" },
-    { id: 2, title: "Enviar solicitud de vacaciones", completed: false, dueDate: "2024-06-30" },
-    { id: 3, title: "Organizar reunión de equipo", completed: true, dueDate: "2024-06-25" },
-    { id: 4, title: "Llamar al proveedor", completed: false, dueDate: "2024-06-20" },
-  ])
+  const [tasks, setTasks] = useState([])
   const [newTaskTitle, setNewTaskTitle] = useState("")
   const [newTaskDueDate, setNewTaskDueDate] = useState("")
   const [editingTaskId, setEditingTaskId] = useState(null)
   const [editedTaskTitle, setEditedTaskTitle] = useState("")
   const [editedTaskDueDate, setEditedTaskDueDate] = useState("")
-  const addTask = () => {
-    if (newTaskTitle.trim() !== "" && newTaskDueDate !== "") {
-      const newTask = { id: Date.now(), title: newTaskTitle, completed: false, dueDate: newTaskDueDate }
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [taskToComplete, setTaskToComplete] = useState(null);
+  const [taskToDelete, setTaskToDelete] = useState(null);
+
+
+  const addTask = (title, dueDate) => {
+    if (title.trim() !== "" && dueDate !== "") {
+      const newTask = { id: Date.now(), title: title, completed: false, dueDate: dueDate }
       setTasks([...tasks, newTask])
-      setNewTaskTitle("")
-      setNewTaskDueDate("")
     }
   }
   const editTask = (taskId) => {
@@ -51,23 +49,19 @@ export default function Component() {
     }
   }
   const deleteTask = (taskId) => {
-    AlertDialog({
-      title: "¿Estás seguro?",
-      description: "Esta acción no se puede deshacer.",
-      onConfirm: () => {
-        setTasks(tasks.filter((task) => task.id !== taskId))
-      },
-    })
-  }
+    // Guarda la tarea que se está eliminando
+    setTaskToDelete(taskId);
+    // Abre el diálogo
+    setIsDialogOpen(true);
+  };
+
   const toggleTaskCompletion = (taskId) => {
-    AlertDialog({
-      title: "¿Marcar como completa?",
-      description: "Esta tarea se marcará como completada.",
-      onConfirm: () => {
-        setTasks(tasks.map((task) => (task.id === taskId ? { ...task, completed: !task.completed } : task)))
-      },
-    })
-  }
+    // Guarda la tarea que se está marcando como completada
+    setTaskToComplete(taskId);
+    // Abre el diálogo
+    setIsDialogOpen(true);
+  };
+
   const sortedTasks = tasks.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
   return (
       <div className="flex flex-col h-screen bg-background text-foreground">
@@ -90,7 +84,7 @@ export default function Component() {
                   onChange={(e) => setNewTaskDueDate(e.target.value)}
                   className="flex-1"
               />
-              <Button onClick={addTask}>Agregar</Button>
+              <Button onClick={() => addTask(newTaskTitle, newTaskDueDate)}>Agregar</Button>
             </div>
           </div>
           <div className="space-y-4">
@@ -104,7 +98,7 @@ export default function Component() {
                       } ${new Date(task.dueDate) < new Date() ? "bg-red-500 text-red-50" : ""}`}
                   >
                     <div className="flex items-center gap-3">
-                      <Checkbox checked={task.completed} onCheckedChange={() => toggleTaskCompletion(task.id)} />
+                      <Checkbox checked={task.completed} onCheckedChange={() => toggleTaskCompletion(task.id)}/>
                       {editingTaskId === task.id ? (
                           <>
                             <Input
@@ -130,8 +124,8 @@ export default function Component() {
                                     new Date(task.dueDate) < new Date() ? "text-red-50" : "text-muted-foreground"
                                 }`}
                             >
-                        Due: {new Date(task.dueDate).toLocaleDateString()}
-                      </span>
+                      Due: {new Date(task.dueDate).toLocaleDateString()}
+                    </span>
                           </>
                       )}
                     </div>
@@ -161,6 +155,27 @@ export default function Component() {
             </ul>
           </div>
         </main>
+        <AlertDialog
+            isOpen={isDialogOpen}
+            title={taskToDelete !== null ? "¿Estás seguro?" : "¿Marcar como completa?"}
+            description={taskToDelete !== null ? "Esta acción no se puede deshacer." : "Esta tarea se marcará como completada."}
+            onConfirm={() => {
+              if (taskToDelete !== null) {
+                setTasks(tasks.filter((task) => task.id !== taskToDelete));
+                // Asegúrate de actualizar taskToDelete y taskToComplete
+                setTaskToDelete(null);
+                if (taskToComplete === taskToDelete) {
+                  setTaskToComplete(null);
+                }
+              } else {
+                setTasks(tasks.map((task) => (task.id === taskToComplete ? { ...task, completed: !task.completed } : task)));
+              }
+              setIsDialogOpen(false);
+            }}
+            onRequestClose={() => {
+              setIsDialogOpen(false);
+            }}
+        />
       </div>
   )
 }
